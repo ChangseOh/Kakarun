@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.8" tiledversion="1.8.5" orientation="orthogonal" renderorder="right-down" width="256" height="12" tilewidth="16" tileheight="16" infinite="0" nextlayerid="4" nextobjectid="59">
+ <tileset firstgid="1" source="../../FlappyWitch/Resources/tile.tsx"/>
+ <layer id="1" name="terrain" width="256" height="12">
+  <data encoding="base64" compression="zlib">
+   eJzt2NEORjAMhmE3gAPc/61yZpnE1upW5X2Snkn+hu9fyzAAAAAAAFoZj5qSmn3bAdDRctSa1ObbDoAbzGvgv5jXV5IzMb9WW5y731abKc087jnDo+0Lmn4lZ2J+rbbeeu4+ed7RstJSbaY087jnDPfeF6SZ8u43uif370v3vrTn5Tks5VSaY+1Zat2HNf7P9zx3O95dTqU9L89hKafSHGtzb92HNe/ffzvP3S76u4vFdxmKomLWDnsZH6s=
+  </data>
+ </layer>
+ <layer id="3" name="item" width="256" height="12">
+  <data encoding="base64" compression="zlib">
+   eJztlusOwyAIhZu+/0MvS/ajIXI5oA638yXG1IKgiHhdhBBCTuH+NG+sopOxQQixuY2GzGH1M3QyNnZT2cOVdPWLjKnm4woitRnxGdWJyltylWaBvlt20dWvnTzXKePZcf274pKxo+l4NRv5Vx3fnf/V+0GTrd77s/06kdHZGPVd6ObPCHlmtL209hjVQcZPzf/ZtZr5r+c7kv/oGxDZz+odn7ETXYumJ+fI7DGqMyOOnWGuruFXz8ubXXeHZvf5Lf9b3xmdjI1OePdvJf/Ru322fndkrRrVLilrnXEvjpr97LsgYifqXxXPl9G+evkf0UHkvTdLtmWwdKvxqc690jeSx4rJN/HOCzKe0YmOd8n/ag6unHulb/+MrE1Ij8TkKTurVlXJ+IHqROSZ/74M858Q0pEXxikDwQ==
+  </data>
+ </layer>
+ <objectgroup id="2" name="obstacle"/>
+</map>

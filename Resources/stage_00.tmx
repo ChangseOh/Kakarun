@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.8" tiledversion="1.8.5" orientation="orthogonal" renderorder="right-down" width="256" height="12" tilewidth="16" tileheight="16" infinite="0" nextlayerid="4" nextobjectid="59">
+ <tileset firstgid="1" source="tile.tsx"/>
+ <layer id="1" name="terrain" width="256" height="12">
+  <data encoding="base64" compression="zlib">
+   eJzt2NEORjAMhmE3gAPc/61yZpnE1upW5X2Snkn+hu9fyzAAAAAAAFoZj5qSmn3bAdDRctSa1ObbDoAbzGvgv5jXV5IzMb9WW5y731abKc087jnDo+0Lmn4lZ2J+rbbeeu4+ed7RstJSbaY087jnDPfeF6SZ8u43uif370v3vrTn5Tks5VSaY+1Zat2HNf7P9zx3O95dTqU9L89hKafSHGtzb92HNe/ffzvP3S76u4vFdxmKomLWDnsZH6s=
+  </data>
+ </layer>
+ <layer id="3" name="item" width="256" height="12">
+  <data encoding="base64" compression="zlib">
+   eJztmEkOwyAMRas09z9zN11YrvEIxKj/SYiGYHAwn6GvFwAAgFO4vskqq9hk+gAA6FxKirSh5TNsMn3spjKGK+nqF5Dx6vF+wCftXWSeRW289d+Lkkb03LKLrn7thH4nj2fH798Vl0w/Ixtrz468q5bv1r9nHCNjPWuvnu3XiUhzg+bdvr2bPxJ8ztC1laKNcdRmdNaXyr16vgN1d+h/9l4N/f/Oj4z+o2fA6L15RwyiewodN+vczcd29Cy177Wx+jp9DkOra7D0fzK71o5Rv/SZwv+T8NwXos88ft11Ya2/Ff1X7wuz7htd0e7/0jySxoH/1uI46j97LvD04/WviuWLtB9b+vfY8PM9zSXbFSmDZluNT7Xtlb6BPFpMnsSaL5HyjI23vIv+qxpc2fZK3/4ZvpdF8khMaN1Ze1WVjB9RG0996N+uA/0DADryAabaBCY=
+  </data>
+ </layer>
+ <objectgroup id="2" name="obstacle"/>
+</map>
