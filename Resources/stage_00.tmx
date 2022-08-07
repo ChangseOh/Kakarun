@@ -3,7 +3,7 @@
  <tileset firstgid="1" source="tile.tsx"/>
  <layer id="1" name="terrain" width="256" height="12">
   <data encoding="base64" compression="zlib">
-   eJzt2NEORjAMhmE3gAPc/61yZpnE1upW5X2Snkn+hu9fyzAAAAAAAFoZj5qSmn3bAdDRctSa1ObbDoAbzGvgv5jXV5IzMb9WW5y731abKc087jnDo+0Lmn4lZ2J+rbbeeu4+ed7RstJSbaY087jnDPfeF6SZ8u43uif370v3vrTn5Tks5VSaY+1Zat2HNf7P9zx3O95dTqU9L89hKafSHGtzb92HNe/ffzvP3S76u4vFdxmKomLWDnsZH6s=
+   eJzt2NEORjAMhmG3gCPc/31yZpnE1upW5X2Snkn+hu9fyzAAAAAAAFoZj5qSmn3bAdDRctSa1ObbDoAbzGvgv5jXV5IzMb9WW5y731abKc087jnDo+0Lmn4lZ2J+rbbeeu4+ed7RstJSbaY087jnDPfeF6SZ8u43uif370v3vrTn5Tks5VSaY+1Zat2HNf7P9zx3O95dTqU9L89hKafSHGtzb92HNe/ffzvP3S76u4vFdxmKomLWDsvSKN0=
   </data>
  </layer>
  <layer id="3" name="item" width="256" height="12">

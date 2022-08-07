@@ -150,7 +150,7 @@ void GameScene::GameStart()
 {
     Sprite* bg = (Sprite*)getChildByName("BG");
 
-    CreateMap(0);
+    CreateMap(1, 0);
 
     auto chr = Sprite::create("twiggy.png");
     chr->getTexture()->setAliasTexParameters();
@@ -173,7 +173,13 @@ void GameScene::GameStart()
     vector<int> tires = {
         20
     };
-
+    vector<int> sliding = {
+        21, 22
+    };
+    run.clear();
+    jump.clear();
+    tired.clear();
+    slide.clear();
     for (const auto num : runs)
     {
         run.pushBack(SpriteFrameCache::getInstance()->getSpriteFrameByName(SPRINTF("CHR_00_%02d", num)));
@@ -186,6 +192,10 @@ void GameScene::GameStart()
     {
         tired.pushBack(SpriteFrameCache::getInstance()->getSpriteFrameByName(SPRINTF("CHR_00_%02d", num)));
     }
+    for (const auto num : sliding)
+    {
+        slide.pushBack(SpriteFrameCache::getInstance()->getSpriteFrameByName(SPRINTF("CHR_00_%02d", num)));
+    }
 
     score = 0;
 
@@ -194,6 +204,7 @@ void GameScene::GameStart()
     isDJump = false;
     isSliding = false;
     life = 100.0f;
+    invincible = 0;
 
     auto lifebase = Sprite::create("lifebase.png");
     lifebase->setPosition(center + Vec2(0, 86));
@@ -267,20 +278,41 @@ void GameScene::GameStart()
         });
 
     auto reddot = Sprite::create("reddot.png");
-    reddot->setPosition(origin + Vec2(80, 16));
+    reddot->setPosition(origin + Vec2(80, 48));
+    reddot->setName("REDDOT");
     gameLayer->addChild(reddot, 1);
+
+    auto reddothead = Sprite::create("reddot.png");
+    reddothead->setPosition(1, 14);
+    reddothead->setName("REDDOTHEAD");
+    reddot->addChild(reddothead, 1);
 
     auto player = Sprite::createWithSpriteFrameName("CHR_00_00");
     //player->setAnchorPoint(Vec2(0.5f, 0.0f));
     player->setPosition(1, 24);
     player->setScale(1.5f);
+    player->setName("PLAYER");
     reddot->addChild(player);
+
+    Vector<Node*> dots;
+    dots.pushBack(reddot);
+    dots.pushBack(reddothead);
 
     player->runAction(RepeatForever::create(
         Animate::create(Animation::createWithSpriteFrames(run, 0.06f))
     ));
     reddot->schedule([=](float dt) {
+
+        if (reddot->getPosition().y < -100)
+        {
+            life -= 10.0f;
+            if (life < 0)
+                life = 0;
+            return;
+        }
+
         reddot->setPosition(reddot->getPosition() + Vec2(0, downSpeed));
+        reddothead->setPosition(1, 14);
         downSpeed -= 0.09f;
         life -= 0.05f;
 
@@ -292,59 +324,106 @@ void GameScene::GameStart()
         TMXTiledMap* map = (TMXTiledMap*)gameLayer->getChildByName("MAP");
         auto layer = map->getLayer("terrain");
         auto itemLayer = map->getLayer("item");
-        int tileX = (int)(map->convertToNodeSpace(reddot->getPosition()).x / map->getTileSize().width);
-        int tileY = (int)(map->getMapSize().height - map->convertToNodeSpace(reddot->getPosition()).y / map->getTileSize().height);
-        if ((0 <= tileX && tileX < map->getMapSize().width) &&
-            (0 <= tileY && tileY < map->getMapSize().height))
+        auto obsLayer = map->getLayer("obs");
+        for (const auto dot : dots)
         {
-            int gid = layer->getTileGIDAt(Vec2(tileX, tileY));
-            if (downSpeed < 0 && (13 <= gid && gid <= 15))
+            Vect _pos = dot->getPosition();
+            Vec2 dorpos = dot->getParent()->convertToWorldSpace(dot->getPosition());
+            int tileX = (int)(map->convertToNodeSpace(dorpos).x / map->getTileSize().width);
+            int tileY = (int)(map->getMapSize().height - map->convertToNodeSpace(dorpos).y / map->getTileSize().height);
+            if ((0 <= tileX && tileX < map->getMapSize().width) &&
+                (0 <= tileY && tileY < map->getMapSize().height))
             {
-                if (isJump || isDJump)
+                int gid = layer->getTileGIDAt(Vec2(tileX, tileY));
+                if (downSpeed < 0 && (17 <= gid && gid <= 19))
                 {
-                    player->stopActionByTag(0);
-                    player->setRotation(0);
-                    player->runAction(RepeatForever::create(
-                        Animate::create(Animation::createWithSpriteFrames(run, 0.06f))
-                    ));
-                }
-                downSpeed = 0;
-                isJump = false;
-                isDJump = false;
-                if ((int)reddot->getPosition().y % 16 != 0)
-                    reddot->setPositionY((int)(reddot->getPosition().y / 16 + 1) * 16);
+                    if (isJump || isDJump)
+                    {
+                        player->stopActionByTag(0);
+                        player->setRotation(0);
+                        player->runAction(RepeatForever::create(
+                            Animate::create(Animation::createWithSpriteFrames(run, 0.06f))
+                        ));
+                    }
+                    downSpeed = 0;
+                    isJump = false;
+                    isDJump = false;
+                    if ((int)dot->getPosition().y % 16 != 0)
+                        dot->setPositionY((int)(dot->getPosition().y / 16 + 1) * 16);
 
-                if (life == 0)
-                {
-                    Gameover(reddot, player);
-                }
-            }
+                    if (isSliding)
+                    {
+                        auto slideani = player->getActionByTag(1);
+                        if (!slideani)
+                        {
+                            player->stopAllActions();
+                            auto slidingaction = RepeatForever::create(
+                                Animate::create(Animation::createWithSpriteFrames(slide, 0.1f))
+                            );
+                            slidingaction->setTag(1);
+                            player->runAction(slidingaction);
+                        }
+                        reddothead->setPosition(1, 2);
+                    }
 
-            int tileY2 = (int)(map->getMapSize().height - (map->convertToNodeSpace(reddot->getPosition()).y + 8) / map->getTileSize().height);
-            int itemgid = itemLayer->getTileGIDAt(Vec2(tileX, tileY2));
-            if (itemgid == 2 || itemgid == 3 || itemgid == 4)
-            {
-                itemLayer->setTileGID(1, Vec2(tileX, tileY2));
-                if (itemgid == 4)
+                    if (life == 0)
+                    {
+                        Gameover(reddot, player);
+                        break;
+                    }
+                }
+
+                int tileY2 = (int)(map->getMapSize().height - (map->convertToNodeSpace(dorpos).y + (12)) / map->getTileSize().height);
+                //int tileY2 = (int)(map->getMapSize().height - (map->convertToNodeSpace(dot->getPosition()).y) / map->getTileSize().height);
+                int itemgid = itemLayer->getTileGIDAt(Vec2(tileX, tileY2));
+                if (2 <= itemgid && itemgid <= 8)
                 {
-                    score += 100;
-                    life += 10;
-                    if (life >= 100)
-                        life = 100;
-                    playSEonce("se_recovery.mp3");
-                    auto effect = drawEffect("4.png", 5, 1);
-                    effect->setPosition(tileX * map->getTileSize().width, (map->getMapSize().height - tileY) * map->getTileSize().height);
-                    map->addChild(effect);
+                    itemLayer->setTileGID(1, Vec2(tileX, tileY2));
+                    if (itemgid == 4)
+                    {
+                        score += 100;
+                        life += 10;
+                        if (life >= 100)
+                            life = 100;
+                        playSEonce("se_recovery.mp3");
+                        auto effect = drawEffect("4.png", 5, 1);
+                        effect->setPosition(tileX * map->getTileSize().width, (map->getMapSize().height - tileY) * map->getTileSize().height);
+                        map->addChild(effect);
+                    }
+                    else
+                    {
+                        score += itemgid * 5;
+                        playSEonce("effect_08.mp3");
+                        auto effect = drawEffect("2.png", 5, 1);
+                        effect->setPosition(tileX * map->getTileSize().width, (map->getMapSize().height - tileY) * map->getTileSize().height);
+                        map->addChild(effect);
+                    }
+                    scorelbl->setString(SPRINTF("SCORE %05d", score));
+                }
+                if (invincible == 0)
+                {
+                    int obsid = obsLayer->getTileGIDAt(Vec2(tileX, tileY2));
+                    if (obsid >= 49)
+                    {
+                        life -= 5;
+                        invincible = 1.0f;
+                        player->setOpacity(150);
+                        auto effect = drawEffect("5.png", 5, 1);
+                        effect->setPosition(dorpos);
+                        gameLayer->addChild(effect);
+                        playSEonce("deffend_A1.mp3");
+                    }
                 }
                 else
                 {
-                    score += itemgid * 5;
-                    playSEonce("effect_08.mp3");
-                    auto effect = drawEffect("2.png", 5, 1);
-                    effect->setPosition(tileX * map->getTileSize().width, (map->getMapSize().height - tileY) * map->getTileSize().height);
-                    map->addChild(effect);
+                    invincible -= dt;
+                    if (invincible <= 0)
+                    {
+                        invincible = 0;
+                        player->setOpacity(255);
+                    }
                 }
-                scorelbl->setString(SPRINTF("SCORE %05d", score));
+                
             }
         }
         }, "PLAYER");
@@ -356,12 +435,12 @@ void GameScene::GameStart()
     jumpbtn->setScale(0.8f);
     gameLayer->addChild(jumpbtn, 2);
 
-    auto slide = Sprite::create("slide.png");
-    slide->setName("SLIDE");
-    slide->setPosition(origin + Vec2(visibleSize.width - 65, 20));
-    slide->setOpacity(120);
-    slide->setScale(0.8f);
-    gameLayer->addChild(slide, 2);
+    auto slidebtn = Sprite::create("slide.png");
+    slidebtn->setName("SLIDE");
+    slidebtn->setPosition(origin + Vec2(visibleSize.width - 65, 20));
+    slidebtn->setOpacity(120);
+    slidebtn->setScale(0.8f);
+    gameLayer->addChild(slidebtn, 2);
 
     auto touchEvent = EventListenerTouchOneByOne::create();
     touchEvent->onTouchBegan = [=](Touch* touch, Event* event) {
@@ -370,49 +449,47 @@ void GameScene::GameStart()
             return false;
 
         auto loc = this->convertToNodeSpace(touch->getLocation());
-        if (loc.x < visibleSize.width * 0.5f && !isJump)
+
+        if (loc.x < visibleSize.width * 0.5f)
         {
-            isJump = true;
-            gameLayer->getChildByName("JUMP")->setOpacity(255);
-            downSpeed = 2.5f;
-            player->stopAllActions();
-            player->runAction(
-                Animate::create(Animation::createWithSpriteFrames(jump, 0.15f))
-            );
-            playSEonce("effect_14.mp3");
+            pushJump();
         }
         else
-            if (loc.x < visibleSize.width * 0.5f && isJump && !isDJump)
+            if (loc.x > visibleSize.width * 0.5f)
             {
-                isDJump = true;
-                gameLayer->getChildByName("JUMP")->setOpacity(255);
-                downSpeed = 2.5f;
-                auto roll = RotateBy::create(1.0f, 360);
-                roll->setTag(0);
-                player->runAction(roll);
-                playSEonce("effect_14.mp3");
+                pushSlide();
             }
-            else
-                if (loc.x > visibleSize.width * 0.5f && downSpeed == 0 && !isSliding)
-                {
-                    isSliding = true;
-                    gameLayer->getChildByName("SLIDE")->setOpacity(255);
-                }
         return true;
     };
     touchEvent->onTouchEnded = [=](Touch* touch, Event* event) {
         if (isJump)
         {
-            gameLayer->getChildByName("JUMP")->setOpacity(120);
+            releaseJump();
         }
         else
             if (isSliding)
             {
-                gameLayer->getChildByName("SLIDE")->setOpacity(120);
-                isSliding = false;
+                releaseSlide();
             }
     };
     _eventDispatcher->addEventListenerWithSceneGraphPriority(touchEvent, this);
+
+    auto keyEvent = EventListenerKeyboard::create();
+    keyEvent->onKeyPressed = [=](EventKeyboard::KeyCode keyCode, Event* event) {
+        if (keyCode == EventKeyboard::KeyCode::KEY_LEFT_ARROW)
+            pushJump();
+        else
+            if (keyCode == EventKeyboard::KeyCode::KEY_RIGHT_ARROW)
+                pushSlide();
+    };
+    keyEvent->onKeyReleased = [=](EventKeyboard::KeyCode keyCode, Event* event) {
+        if (keyCode == EventKeyboard::KeyCode::KEY_LEFT_ARROW)
+            releaseJump();
+        else
+            if (keyCode == EventKeyboard::KeyCode::KEY_RIGHT_ARROW)
+                releaseSlide();
+    };
+    _eventDispatcher->addEventListenerWithSceneGraphPriority(keyEvent, this);
 
     playBGM("movingrightalong.mp3");
 }
@@ -428,20 +505,24 @@ void GameScene::SetTitle()
     };
     addChild(title);
 }
-void GameScene::CreateMap(int num)
+void GameScene::CreateMap(int num, float adj)
 {
-    auto map = TMXTiledMap::create("stage_00.tmx");
-    map->setPosition(origin + Vec2(0, 0));
+    auto map = TMXTiledMap::create(SPRINTF("stage_%02d.tmx", num));
+    map->setPosition(origin + Vec2(adj, 0));
     map->setName("MAP");
     gameLayer->addChild(map);
     map->runAction(RepeatForever::create(
         MoveBy::create(0.25f, Vec2(-16, 0))
     ));
     map->schedule([=](float dt) {
+        score++;
+        ((Label*)gameLayer->getChildByName("SCORE"))->setString(SPRINTF("SCORE %05d", score));
+
         if (map->getPositionX() < (-1) * (map->getMapSize().width * map->getTileSize().width * map->getScale() - visibleSize.width))
         {
+            float _adjx = (-1) * (map->getMapSize().width * map->getTileSize().width * map->getScale() - visibleSize.width) - map->getPositionX();
             map->removeFromParent();
-            CreateMap(num);
+            CreateMap(num, _adjx);
         }
         }, "MAP");
 }
@@ -473,6 +554,60 @@ void GameScene::Gameover(Sprite* reddot, Sprite* player)
             }),
         NULL
     ));
+}
+void GameScene::pushJump()
+{
+    Sprite* player = (Sprite*)gameLayer->getChildByName("REDDOT")->getChildByName("PLAYER");
+    
+    if (!isJump)
+    {
+        isJump = true;
+        gameLayer->getChildByName("JUMP")->setOpacity(255);
+        downSpeed = 2.5f;
+        player->stopAllActions();
+        player->runAction(
+            Animate::create(Animation::createWithSpriteFrames(jump, 0.15f))
+        );
+        playSEonce("effect_14.mp3");
+    }
+    else
+        if (isJump && !isDJump)
+        {
+            isDJump = true;
+            gameLayer->getChildByName("JUMP")->setOpacity(255);
+            downSpeed = 2.5f;
+            auto roll = RotateBy::create(1.0f, 360);
+            roll->setTag(0);
+            player->runAction(roll);
+            playSEonce("effect_14.mp3");
+        }
+}
+void GameScene::pushSlide()
+{
+    if (!isSliding)
+    {
+        isSliding = true;
+        gameLayer->getChildByName("SLIDE")->setOpacity(255);
+    }
+}
+void GameScene::releaseJump()
+{
+    gameLayer->getChildByName("JUMP")->setOpacity(120);
+}
+void GameScene::releaseSlide()
+{
+    Sprite* player = (Sprite*)gameLayer->getChildByName("REDDOT")->getChildByName("PLAYER");
+
+    gameLayer->getChildByName("SLIDE")->setOpacity(120);
+    isSliding = false;
+    auto jumping = player->getActionByTag(0);
+    if (!jumping)
+    {
+        player->stopAllActions();
+        player->runAction(RepeatForever::create(
+            Animate::create(Animation::createWithSpriteFrames(run, 0.06f))
+        ));
+    }
 }
 
 

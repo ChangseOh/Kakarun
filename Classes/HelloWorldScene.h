@@ -62,6 +62,7 @@ public:
     Vector<SpriteFrame*> run;
     Vector<SpriteFrame*> jump;
     Vector<SpriteFrame*> tired;
+    Vector<SpriteFrame*> slide;
 
     int score;
 
@@ -70,14 +71,19 @@ public:
     bool isSliding;
     float downSpeed;
     float life;
-
+    float invincible;
 
     Layer* gameLayer;
     void GameStart();
     void SetTitle();
 
-    void CreateMap(int num);
+    void CreateMap(int num, float adj);
     void Gameover(Sprite* reddot, Sprite* player);
+
+    void pushJump();
+    void pushSlide();
+    void releaseJump();
+    void releaseSlide();
 };
 
 class MenuLayer : public cocos2d::Layer
