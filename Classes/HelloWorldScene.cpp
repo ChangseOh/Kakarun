@@ -87,6 +87,21 @@ Sprite* drawEffect(string fname, int width, int height)
     ));
     return effect;
 }
+float getAngle(Vec2 pos1, Vec2 pos2)
+{
+    float vx = pos1.x - pos2.x;
+    float vy = pos1.y - pos2.y;
+    double rad = atan2(vx, vy);
+    return (float)(MATH_RAD_TO_DEG(rad));// (rad * 180) / 3.1415f);
+}
+
+Vec2 getDest(Vec2 base, float deg, float speed)
+{
+    float x = speed * sin(MATH_DEG_TO_RAD(deg));
+    float y = speed * cos(MATH_DEG_TO_RAD(deg));
+    return (base + Vec2(x, y));
+}
+
 
 Scene* GameScene::createScene()
 {
@@ -199,9 +214,14 @@ void GameScene::GameStart()
 
     score = 0;
 
+    _isJump.clear();
+    _isJump.push_back(false);
+    _isJump.push_back(false);//2단 점프
+    //_isJump.push_back(false);//3단 점프
+
     downSpeed = 0;
-    isJump = false;
-    isDJump = false;
+    //isJump = false;
+    //isDJump = false;
     isSliding = false;
     life = 100.0f;
     invincible = 0;
@@ -217,7 +237,7 @@ void GameScene::GameStart()
     lifebar->setAnchorPoint(Vec2(0, 0.5f));
     gameLayer->addChild(lifebar, 2);
     lifebar->schedule([=](float dt) {
-        lifebar->setTextureRect(Rect(0, 0, lbarwidth * life / 100.0f, lbarheight));
+        lifebar->setTextureRect(Rect(0, 0, lbarwidth * (life < 0 ? 0 : life) / 100.0f, lbarheight));
         if (life <= 0)
         {
             bg->stopAllActions();
@@ -270,6 +290,9 @@ void GameScene::GameStart()
                 else if (ret == 0)
                 {
                     gameLayer->removeAllChildrenWithCleanup(true);
+                    Director::getInstance()->resume();
+                    SetTitle();
+                    menu->removeFromParent();
                 }
             };
             gameLayer->addChild(menu, 4);
@@ -283,13 +306,13 @@ void GameScene::GameStart()
     gameLayer->addChild(reddot, 1);
 
     auto reddothead = Sprite::create("reddot.png");
-    reddothead->setPosition(1, 14);
+    reddothead->setPosition(0, 14);
     reddothead->setName("REDDOTHEAD");
     reddot->addChild(reddothead, 1);
 
     auto player = Sprite::createWithSpriteFrameName("CHR_00_00");
     //player->setAnchorPoint(Vec2(0.5f, 0.0f));
-    player->setPosition(1, 24);
+    player->setPosition(0, 24);
     player->setScale(1.5f);
     player->setName("PLAYER");
     reddot->addChild(player);
@@ -312,7 +335,7 @@ void GameScene::GameStart()
         }
 
         reddot->setPosition(reddot->getPosition() + Vec2(0, downSpeed));
-        reddothead->setPosition(1, 14);
+        reddothead->setPosition(0, 14);
         downSpeed -= 0.09f;
         life -= 0.05f;
 
@@ -337,7 +360,12 @@ void GameScene::GameStart()
                 int gid = layer->getTileGIDAt(Vec2(tileX, tileY));
                 if (downSpeed < 0 && (17 <= gid && gid <= 19))
                 {
-                    if (isJump || isDJump)
+                    bool noMoreJump = false;
+                    for (const auto _ij : _isJump)
+                        if (_ij)
+                            noMoreJump = true;
+                    if(noMoreJump)
+                    //if (isJump || isDJump)
                     {
                         player->stopActionByTag(0);
                         player->setRotation(0);
@@ -346,8 +374,10 @@ void GameScene::GameStart()
                         ));
                     }
                     downSpeed = 0;
-                    isJump = false;
-                    isDJump = false;
+                    for (int i = 0; i < _isJump.size(); i++)
+                        _isJump.at(i) = false;
+                    //isJump = false;
+                    //isDJump = false;
                     if ((int)dot->getPosition().y % 16 != 0)
                         dot->setPositionY((int)(dot->getPosition().y / 16 + 1) * 16);
 
@@ -363,7 +393,7 @@ void GameScene::GameStart()
                             slidingaction->setTag(1);
                             player->runAction(slidingaction);
                         }
-                        reddothead->setPosition(1, 2);
+                        reddothead->setPosition(0, 2);
                     }
 
                     if (life == 0)
@@ -374,39 +404,93 @@ void GameScene::GameStart()
                 }
 
                 int tileY2 = (int)(map->getMapSize().height - (map->convertToNodeSpace(dorpos).y + (12)) / map->getTileSize().height);
-                //int tileY2 = (int)(map->getMapSize().height - (map->convertToNodeSpace(dot->getPosition()).y) / map->getTileSize().height);
-                int itemgid = itemLayer->getTileGIDAt(Vec2(tileX, tileY2));
-                if (2 <= itemgid && itemgid <= 8)
+                int itemgid = 0;
+                if (itemLayer->isVisible())
                 {
-                    itemLayer->setTileGID(1, Vec2(tileX, tileY2));
-                    if (itemgid == 4)
+                    //int tileY2 = (int)(map->getMapSize().height - (map->convertToNodeSpace(dot->getPosition()).y) / map->getTileSize().height);
+                    int itemgid = itemLayer->getTileGIDAt(Vec2(tileX, tileY2));
+                    if (2 <= itemgid && itemgid <= 8)
                     {
-                        score += 100;
-                        life += 10;
-                        if (life >= 100)
-                            life = 100;
-                        playSEonce("se_recovery.mp3");
-                        auto effect = drawEffect("4.png", 5, 1);
-                        effect->setPosition(tileX * map->getTileSize().width, (map->getMapSize().height - tileY) * map->getTileSize().height);
-                        map->addChild(effect);
+                        itemLayer->removeTileAt(Vec2(tileX, tileY2));
+                        //itemLayer->setTileGID(1, Vec2(tileX, tileY2));
+                        if (itemgid == 4)
+                        {
+                            score += 100;
+                            life += 10.0f;
+                            if (life >= 100)
+                                life = 100;
+                            playSEonce("se_recovery.mp3");
+                            auto effect = drawEffect("4.png", 5, 1);
+                            effect->setPosition(tileX * map->getTileSize().width, (map->getMapSize().height - tileY) * map->getTileSize().height);
+                            map->addChild(effect);
+                        }
+                        else
+                        {
+                            score += itemgid * 5;
+                            playSEonce("effect_08.mp3");
+                            auto effect = drawEffect("2.png", 5, 1);
+                            effect->setPosition(tileX * map->getTileSize().width, (map->getMapSize().height - tileY) * map->getTileSize().height);
+                            map->addChild(effect);
+                        }
+                        scorelbl->setString(SPRINTF("SCORE %05d", score));
                     }
-                    else
+                }
+                else
+                {
+                    auto mapchildren = map->getChildren();
+                    for (const auto child : mapchildren)
                     {
-                        score += itemgid * 5;
-                        playSEonce("effect_08.mp3");
-                        auto effect = drawEffect("2.png", 5, 1);
-                        effect->setPosition(tileX * map->getTileSize().width, (map->getMapSize().height - tileY) * map->getTileSize().height);
-                        map->addChild(effect);
+                        if (child->getName() == "ITEM")
+                        {
+                            if (child->getBoundingBox().containsPoint(map->convertToNodeSpace(dorpos)))
+                            {
+                                int itemgid = child->getTag();
+                                if (itemgid == 4)
+                                {
+                                    score += 100;
+                                    life += 10.0f;
+                                    if (life >= 100)
+                                        life = 100;
+                                    playSEonce("se_recovery.mp3");
+                                    auto effect = drawEffect("4.png", 5, 1);
+                                    effect->setPosition(child->getPosition());
+                                    map->addChild(effect, 5);
+                                }
+                                else
+                                    if (itemgid == 6)
+                                    {
+                                        gameLayer->getChildByName("REDDOT")->runAction(ScaleTo::create(0.5f, 3.0f));
+                                        Director::getInstance()->getScheduler()->setTimeScale(2.0f);
+                                        scheduleOnce([=](float dt)
+                                            {
+                                                gameLayer->getChildByName("REDDOT")->runAction(ScaleTo::create(0.5f, 1.0f));
+                                                Director::getInstance()->getScheduler()->setTimeScale(1.0f);
+                                            }, 4.0f, "SPEEDUP");
+                                        obs2Item();
+                                        itemMagnet();
+                                    }
+                                    else
+                                    {
+                                        score += itemgid * 5;
+                                        playSEonce("effect_08.mp3");
+                                        auto effect = drawEffect("2.png", 5, 1);
+                                        effect->setPosition(child->getPosition());
+                                        map->addChild(effect, 5);
+                                    }
+                                scorelbl->setString(SPRINTF("SCORE %05d", score));
+                                child->unschedule("MAGNET");
+                                child->removeFromParent();
+                            }
+                        }
                     }
-                    scorelbl->setString(SPRINTF("SCORE %05d", score));
                 }
                 if (invincible == 0)
                 {
                     int obsid = obsLayer->getTileGIDAt(Vec2(tileX, tileY2));
-                    if (obsid >= 49)
+                    if (obsid >= 41)
                     {
                         life -= 5;
-                        invincible = 1.0f;
+                        invincible = 3.0f;
                         player->setOpacity(150);
                         auto effect = drawEffect("5.png", 5, 1);
                         effect->setPosition(dorpos);
@@ -462,7 +546,7 @@ void GameScene::GameStart()
         return true;
     };
     touchEvent->onTouchEnded = [=](Touch* touch, Event* event) {
-        if (isJump)
+        if (_isJump.at(0))
         {
             releaseJump();
         }
@@ -472,7 +556,8 @@ void GameScene::GameStart()
                 releaseSlide();
             }
     };
-    _eventDispatcher->addEventListenerWithSceneGraphPriority(touchEvent, this);
+    Director::getInstance()->getEventDispatcher()->addEventListenerWithSceneGraphPriority(touchEvent, this);
+    //_eventDispatcher->addEventListenerWithSceneGraphPriority(touchEvent, this);
 
     auto keyEvent = EventListenerKeyboard::create();
     keyEvent->onKeyPressed = [=](EventKeyboard::KeyCode keyCode, Event* event) {
@@ -489,12 +574,13 @@ void GameScene::GameStart()
             if (keyCode == EventKeyboard::KeyCode::KEY_RIGHT_ARROW)
                 releaseSlide();
     };
-    _eventDispatcher->addEventListenerWithSceneGraphPriority(keyEvent, this);
+    Director::getInstance()->getEventDispatcher()->addEventListenerWithSceneGraphPriority(keyEvent, this);
 
     playBGM("movingrightalong.mp3");
 }
 void GameScene::SetTitle()
 {
+    _eventDispatcher->removeAllEventListeners();
     auto title = TitleLayer::create();
     title->cb = [=](int ret) {
         if (ret == 0)
@@ -514,8 +600,10 @@ void GameScene::CreateMap(int num, float adj)
     map->runAction(RepeatForever::create(
         MoveBy::create(0.25f, Vec2(-16, 0))
     ));
+    map->getLayer("item")->setVisible(false);
     map->schedule([=](float dt) {
         score++;
+        spriteItem();
         ((Label*)gameLayer->getChildByName("SCORE"))->setString(SPRINTF("SCORE %05d", score));
 
         if (map->getPositionX() < (-1) * (map->getMapSize().width * map->getTileSize().width * map->getScale() - visibleSize.width))
@@ -548,7 +636,11 @@ void GameScene::Gameover(Sprite* reddot, Sprite* player)
             auto menu = MenuLayer::create(1);
             menu->cb = [=](int ret) {
                 if (ret == 0)
-                    Director::getInstance()->replaceScene(GameScene::create());
+                {
+                    gameLayer->removeAllChildren();
+                    SetTitle();
+                    menu->removeFromParent();
+                }
             };
             addChild(menu, 4);
             }),
@@ -559,9 +651,9 @@ void GameScene::pushJump()
 {
     Sprite* player = (Sprite*)gameLayer->getChildByName("REDDOT")->getChildByName("PLAYER");
     
-    if (!isJump)
+    if (!_isJump.at(0))
     {
-        isJump = true;
+        _isJump.at(0) = true;
         gameLayer->getChildByName("JUMP")->setOpacity(255);
         downSpeed = 2.5f;
         player->stopAllActions();
@@ -571,16 +663,24 @@ void GameScene::pushJump()
         playSEonce("effect_14.mp3");
     }
     else
-        if (isJump && !isDJump)
+    {
+        for (int i = 0; i < _isJump.size(); i++)
         {
-            isDJump = true;
-            gameLayer->getChildByName("JUMP")->setOpacity(255);
-            downSpeed = 2.5f;
-            auto roll = RotateBy::create(1.0f, 360);
-            roll->setTag(0);
-            player->runAction(roll);
-            playSEonce("effect_14.mp3");
+            if (_isJump.at(i))
+                continue;
+            //if (isJump && !isDJump)
+            {
+                _isJump.at(i) = true;
+                gameLayer->getChildByName("JUMP")->setOpacity(255);
+                downSpeed = 2.5f;
+                auto roll = RotateBy::create(1.0f, 360);
+                roll->setTag(0);
+                player->runAction(roll);
+                playSEonce("effect_14.mp3");
+                break;
+            }
         }
+    }
 }
 void GameScene::pushSlide()
 {
@@ -609,7 +709,103 @@ void GameScene::releaseSlide()
         ));
     }
 }
+void GameScene::spriteItem()
+{
+    TMXTiledMap* map = (TMXTiledMap*)gameLayer->getChildByName("MAP");
+    auto itemLayer = map->getLayer("item");
 
+    int tileX = (int)(map->convertToNodeSpace(Vec2(visibleSize.width, 0)).x / map->getTileSize().width);
+    if (tileX < 0 || tileX >= map->getMapSize().width)
+        return;
+    for (int tileY = 0; tileY < map->getMapSize().height; tileY++)
+    {
+        int gid = itemLayer->getTileGIDAt(Vec2(tileX, tileY));
+        if (2 <= gid && gid <= 8)
+        {
+            auto item = createItem(gid);//Sprite::createWithSpriteFrame(itemsheet);
+            item->setPosition(itemLayer->getTileAt(Vec2(tileX, tileY))->getPosition() + Vec2(map->getTileSize().width * 0.5f, map->getTileSize().height * 0.5f));
+            item->setName("ITEM");
+            item->setTag(gid);
+            if (gid != 4)
+                item->setScale(0.8f);
+            map->addChild(item, 4);
+            itemLayer->removeTileAt(Vec2(tileX, tileY));
+
+            item->schedule([=](float dt) {
+                auto itempos = item->getParent()->convertToWorldSpace(item->getPosition());
+                if (itempos.x < -32)
+                {
+                    item->unschedule("MAGNET");
+                    item->removeFromParent();
+                }
+                }, "MAGNET");
+        }
+    }
+}
+Sprite* GameScene::createItem(int gid)
+{
+    SpriteFrame* itemsheet = SpriteFrameCache::getInstance()->getSpriteFrameByName(SPRINTF("ITEM%02d", gid));
+    if (!itemsheet)
+    {
+        auto itemtex = Sprite::create("itemsheet.png")->getTexture();
+        itemtex->setAliasTexParameters();
+        int sheetWidth = (int)(itemtex->getContentSizeInPixels().width / 32);
+        for (int i = 0; i < sheetWidth; i++)
+        {
+            SpriteFrameCache::getInstance()->addSpriteFrame(SpriteFrame::createWithTexture(itemtex, Rect(i * 32, 0, 32, 32)), SPRINTF("ITEM%02d", i + 2));
+        }
+        itemsheet = SpriteFrameCache::getInstance()->getSpriteFrameByName(SPRINTF("ITEM%02d", gid));
+    }
+    Sprite* item = Sprite::createWithSpriteFrame(itemsheet);
+    return item;
+}
+void GameScene::obs2Item()
+{
+    TMXTiledMap* map = (TMXTiledMap*)gameLayer->getChildByName("MAP");
+    auto obslayer = map->getLayer("obs");
+    for (int x = 0; x <= visibleSize.width; x += map->getTileSize().width)
+    {
+        for (int y = 0; y <= visibleSize.height; y += map->getTileSize().height)
+        {
+            auto obspos = map->convertToNodeSpace(Vec2(x, y));
+            int obsX = (int)(obspos.x / map->getTileSize().width);
+            int obsY = (int)(obspos.y / map->getTileSize().height);
+            if (obsX < 0 || obsX >= map->getMapSize().width)
+                continue;
+            if (obsY < 0 || obsY >= map->getMapSize().height)
+                continue;
+            int obsgid = obslayer->getTileGIDAt(Vec2(obsX, obsY));
+            if (obsgid >= 41)
+            {
+                auto item = createItem(2);
+                item->setPosition(obslayer->getTileAt(Vec2(obsX, obsY))->getPosition() + Vec2(map->getTileSize().width * 0.5f, map->getTileSize().height * 0.5f));
+                item->setName("ITEM");
+                item->setTag(2);
+                item->setScale(0.75f);
+                map->addChild(item, 4);
+                obslayer->removeTileAt(Vec2(obsX, obsY));
+            }
+        }
+    }
+}
+void GameScene::itemMagnet()
+{
+    TMXTiledMap* map = (TMXTiledMap*)gameLayer->getChildByName("MAP");
+    auto children = map->getChildren();
+    for (const auto child : children)
+    {
+        if (child->getName() == "ITEM")
+        {
+            child->unschedule("MAGNET");
+            child->schedule([=](float dt) {
+                auto ppos = map->convertToNodeSpace(gameLayer->getChildByName("REDDOT")->getPosition());
+                auto deg = getAngle(ppos, child->getPosition());
+                auto dir = getDest(child->getPosition(), deg, 4.0f);
+                child->setPosition(dir);
+                }, "MAGNET");
+        }
+    }
+}
 
 MenuLayer* MenuLayer::create(int mode)
 {

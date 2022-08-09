@@ -109,7 +109,7 @@ bool AppDelegate::applicationDidFinishLaunching() {
     register_all_packages();
 
 #ifdef WIN32
-    Sleep(3000);
+    //Sleep(3000);
 #endif
 
     // create a scene. it's an autorelease object

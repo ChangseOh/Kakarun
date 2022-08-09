@@ -47,6 +47,8 @@ void playBGM(string fname);
 void playSE(string fname, FUNC callback = nullptr);
 void playSEonce(string fname);
 Sprite* drawEffect(string fname, int width, int height);
+float getAngle(Vec2 pos1, Vec2 pos2);
+Vec2 getDest(Vec2 base, float deg, float speed);
 
 class GameScene : public cocos2d::Scene
 {
@@ -66,8 +68,9 @@ public:
 
     int score;
 
-    bool isJump;
-    bool isDJump;
+    vector<bool> _isJump;
+    //bool isJump;
+    //bool isDJump;
     bool isSliding;
     float downSpeed;
     float life;
@@ -84,6 +87,12 @@ public:
     void pushSlide();
     void releaseJump();
     void releaseSlide();
+
+    void spriteItem();
+    Sprite* createItem(int gid);
+
+    void obs2Item();
+    void itemMagnet();
 };
 
 class MenuLayer : public cocos2d::Layer
